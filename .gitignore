@@ -1,0 +1,23 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+.env
+
+# Project data
+backend/data/repositories/
+backend/data/processed/
+
+# Models
+*.gguf
+*.safetensors
+*.bin
+
+# Frontend
+node_modules/
+dist/
+
+# IDE / OS
+.vscode/
+.DS_Store
+Thumbs.db
