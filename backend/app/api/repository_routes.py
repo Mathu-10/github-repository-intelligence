@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, HttpUrl
-
+from app.repository.github_client import get_repository_metadata
 router = APIRouter()
 
 
@@ -32,9 +32,22 @@ def analyze_repository(request: RepositoryRequest):
     owner, repo = path_parts
     repo = repo.removesuffix(".git")
 
+    metadata, error = get_repository_metadata(owner, repo)
+
+    if error:
+        raise HTTPException(
+            status_code=400,
+            detail=error
+        )
+
     return {
-        "status": "valid",
-        "owner": owner,
-        "repository": repo,
-        "repo_url": repo_url
-    }
+    "status": "valid",
+    "owner": owner,
+    "repository": repo,
+    "description": metadata.get("description"),
+    "default_branch": metadata.get("default_branch"),
+    "language": metadata.get("language"),
+    "size_kb": metadata.get("size"),
+    "stars": metadata.get("stargazers_count"),
+    "forks": metadata.get("forks_count")
+}
