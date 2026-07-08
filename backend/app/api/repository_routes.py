@@ -1,14 +1,17 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, HttpUrl
-from app.repository.github_client import get_repository_metadata
+from app.repository.github_client import (
+    get_repository_metadata,
+    get_repository_tree,
+)
 router = APIRouter()
-
 
 class RepositoryRequest(BaseModel):
     repo_url: HttpUrl
 
 
 @router.post("/analyze")
+
 def analyze_repository(request: RepositoryRequest):
     repo_url = str(request.repo_url)
 
@@ -40,6 +43,18 @@ def analyze_repository(request: RepositoryRequest):
             detail=error
         )
 
+    tree, tree_error = get_repository_tree(
+        owner,
+        repo,
+        metadata["default_branch"]
+    )
+
+    if tree_error:
+        raise HTTPException(
+            status_code=400,
+            detail=tree_error
+        )
+
     return {
     "status": "valid",
     "owner": owner,
@@ -49,5 +64,6 @@ def analyze_repository(request: RepositoryRequest):
     "language": metadata.get("language"),
     "size_kb": metadata.get("size"),
     "stars": metadata.get("stargazers_count"),
-    "forks": metadata.get("forks_count")
+    "forks": metadata.get("forks_count"),
+    "files": tree
 }
