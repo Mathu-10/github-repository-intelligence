@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, HttpUrl
+from app.analysis.file_filter import filter_repository_tree
 from app.repository.github_client import (
     get_repository_metadata,
     get_repository_tree,
 )
 router = APIRouter()
-
 class RepositoryRequest(BaseModel):
     repo_url: HttpUrl
 
@@ -55,6 +55,8 @@ def analyze_repository(request: RepositoryRequest):
             detail=tree_error
         )
 
+    filtered_files = filter_repository_tree(tree)
+
     return {
     "status": "valid",
     "owner": owner,
@@ -65,5 +67,7 @@ def analyze_repository(request: RepositoryRequest):
     "size_kb": metadata.get("size"),
     "stars": metadata.get("stargazers_count"),
     "forks": metadata.get("forks_count"),
-    "files": tree
+    "total_tree_items": len(tree),
+    "analyzable_file_count": len(filtered_files),
+    "files": filtered_files,
 }
