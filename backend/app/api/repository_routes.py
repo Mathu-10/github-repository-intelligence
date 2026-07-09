@@ -15,6 +15,9 @@ from app.analysis.structural_ranker import (
 from app.analysis.architecture_analyzer import (
     infer_repository_architecture,
 )
+from app.analysis.repository_summarizer import (
+    build_repository_summary,
+)
 from app.analysis.entry_point_detector import detect_entry_points
 from app.analysis.file_ranker import rank_files
 from app.analysis.dependency_comparator import compare_dependencies
@@ -127,6 +130,15 @@ def analyze_repository(request: RepositoryRequest):
     external_dependencies,
     declared_dependencies,
 )
+    repository_summary = build_repository_summary(
+    metadata,
+    repository_contents,
+    architecture,
+    entry_points,
+    structural_ranking,
+    external_dependencies,
+    dependency_comparison,
+)
     return {
     "status": "valid",
     "owner": owner,
@@ -154,4 +166,5 @@ def analyze_repository(request: RepositoryRequest):
     "structural_ranking": structural_ranking,
     "entry_points": entry_points,
     "architecture": architecture,
+    "repository_summary": repository_summary,
 }
