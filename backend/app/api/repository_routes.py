@@ -18,6 +18,10 @@ from app.analysis.architecture_analyzer import (
 from app.analysis.repository_summarizer import (
     build_repository_summary,
 )
+from app.model.model_schema import (
+    build_model_input,
+    build_model_output_template,
+)
 from app.analysis.entry_point_detector import detect_entry_points
 from app.analysis.file_ranker import rank_files
 from app.analysis.dependency_comparator import compare_dependencies
@@ -139,6 +143,14 @@ def analyze_repository(request: RepositoryRequest):
     external_dependencies,
     dependency_comparison,
 )
+    model_input = build_model_input(
+    repository_summary,
+    structural_ranking,
+    dependency_graph,
+    repository_contents,
+)
+
+    model_output_template = build_model_output_template()
     return {
     "status": "valid",
     "owner": owner,
@@ -167,4 +179,6 @@ def analyze_repository(request: RepositoryRequest):
     "entry_points": entry_points,
     "architecture": architecture,
     "repository_summary": repository_summary,
+    "model_input": model_input,
+    "model_output_template": model_output_template,
 }
