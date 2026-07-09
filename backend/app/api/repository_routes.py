@@ -8,6 +8,7 @@ from app.repository.github_client import (
 from app.analysis.external_dependency_analyzer import (
     find_external_dependencies,
 )
+from app.analysis.file_ranker import rank_files
 from app.analysis.dependency_comparator import compare_dependencies
 from app.analysis.requirements_parser import parse_requirements
 from app.analysis.dependency_summary import build_dependency_summary
@@ -66,11 +67,14 @@ def analyze_repository(request: RepositoryRequest):
         )
 
     filtered_files = filter_repository_tree(tree)
+
+    ranked_files = rank_files(filtered_files)
+
     repository_contents = fetch_repository_contents(
         owner,
         repo,
-        filtered_files,
-    )
+        ranked_files,
+)
     for file in repository_contents:
         file["category"] = classify_file(file["path"])
 
@@ -120,4 +124,8 @@ def analyze_repository(request: RepositoryRequest):
     "external_dependencies": external_dependencies,
     "declared_dependencies": declared_dependencies,
     "dependency_comparison": dependency_comparison,
+    "ranked_file_paths": [
+        file["path"]
+        for file in ranked_files
+    ],
 }
