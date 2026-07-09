@@ -5,6 +5,9 @@ from app.repository.github_client import (
     get_repository_metadata,
     get_repository_tree,
 )
+from app.analysis.external_dependency_analyzer import (
+    find_external_dependencies,
+)
 from app.analysis.dependency_summary import build_dependency_summary
 from app.repository.content_fetcher import fetch_repository_contents
 from app.analysis.file_classifier import classify_file
@@ -81,6 +84,9 @@ def analyze_repository(request: RepositoryRequest):
     repository_contents,
     dependency_graph,
 )
+    external_dependencies = find_external_dependencies(
+    repository_contents
+)
     
     return {
     "status": "valid",
@@ -99,4 +105,5 @@ def analyze_repository(request: RepositoryRequest):
     "repository_contents": repository_contents,
     "dependency_graph": dependency_graph,
     "dependency_summary": dependency_summary,
+    "external_dependencies": external_dependencies,
 }
