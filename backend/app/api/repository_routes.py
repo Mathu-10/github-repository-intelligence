@@ -6,6 +6,7 @@ from app.repository.github_client import (
     get_repository_tree,
 )
 from app.repository.content_fetcher import fetch_repository_contents
+from app.analysis.file_classifier import classify_file
 router = APIRouter()
 class RepositoryRequest(BaseModel):
     repo_url: HttpUrl
@@ -62,7 +63,8 @@ def analyze_repository(request: RepositoryRequest):
         repo,
         filtered_files,
     )
-
+    for file in repository_contents:
+        file["category"] = classify_file(file["path"])
     return {
     "status": "valid",
     "owner": owner,
