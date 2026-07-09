@@ -1,11 +1,9 @@
-from fastapi import responses
-from fastapi import responses
-from fastapi import responses
 import base64
 import os
 
 import requests
 from dotenv import load_dotenv
+
 
 load_dotenv()
 
@@ -19,7 +17,6 @@ HEADERS = {
 
 if GITHUB_TOKEN:
     HEADERS["Authorization"] = f"Bearer {GITHUB_TOKEN}"
-GITHUB_API_BASE_URL = "https://api.github.com"
 
 
 def get_repository_metadata(owner: str, repo: str):
@@ -31,9 +28,8 @@ def get_repository_metadata(owner: str, repo: str):
             headers=HEADERS,
             timeout=10,
         )
-        
-    except requests.RequestException:
-        return None, "Could not connect to GitHub"
+    except requests.RequestException as error:
+        return None, f"Could not connect to GitHub: {repr(error)}"
 
     if response.status_code == 404:
         return None, "Repository not found or is not public"
@@ -42,6 +38,7 @@ def get_repository_metadata(owner: str, repo: str):
         return None, f"GitHub API error: {response.status_code}"
 
     return response.json(), None
+
 
 def get_repository_tree(owner: str, repo: str, branch: str):
     url = (
@@ -59,7 +56,10 @@ def get_repository_tree(owner: str, repo: str, branch: str):
         return None, "Could not fetch repository structure"
 
     if response.status_code != 200:
-        return None, f"Could not fetch repository tree: {response.status_code}"
+        return None, (
+            f"Could not fetch repository tree: "
+            f"{response.status_code}"
+        )
 
     data = response.json()
 
@@ -68,6 +68,7 @@ def get_repository_tree(owner: str, repo: str, branch: str):
 
     return data.get("tree", []), None
 
+
 def get_file_content(owner: str, repo: str, file_path: str):
     url = (
         f"{GITHUB_API_BASE_URL}/repos/"
@@ -75,7 +76,11 @@ def get_file_content(owner: str, repo: str, file_path: str):
     )
 
     try:
-        response = requests.get(url, timeout=15)
+        response = requests.get(
+            url,
+            headers=HEADERS,
+            timeout=15,
+        )
     except requests.RequestException:
         return None, "Could not fetch file content"
 
@@ -88,7 +93,9 @@ def get_file_content(owner: str, repo: str, file_path: str):
         return None, "Unsupported file encoding"
 
     try:
-        content = base64.b64decode(data["content"]).decode("utf-8")
+        content = base64.b64decode(
+            data["content"]
+        ).decode("utf-8")
     except (ValueError, UnicodeDecodeError, KeyError):
         return None, "Could not decode file content"
 

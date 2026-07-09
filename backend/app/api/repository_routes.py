@@ -8,7 +8,7 @@ from app.repository.github_client import (
 from app.repository.content_fetcher import fetch_repository_contents
 from app.analysis.file_classifier import classify_file
 from app.analysis.python_parser import parse_python_file
-
+from app.analysis.dependency_analyzer import build_python_dependency_graph
 router = APIRouter()
 class RepositoryRequest(BaseModel):
     repo_url: HttpUrl
@@ -73,6 +73,10 @@ def analyze_repository(request: RepositoryRequest):
             and file["path"].lower().endswith(".py")
         ):
             file["analysis"] = parse_python_file(file["content"])
+    dependency_graph = build_python_dependency_graph(
+    repository_contents
+)
+    
     return {
     "status": "valid",
     "owner": owner,
@@ -88,4 +92,5 @@ def analyze_repository(request: RepositoryRequest):
     "files": filtered_files,
     "fetched_file_count": len(repository_contents),
     "repository_contents": repository_contents,
+    "dependency_graph": dependency_graph,
 }
