@@ -12,6 +12,7 @@ from app.analysis.external_dependency_analyzer import (
 from app.analysis.structural_ranker import (
     rank_structurally_important_files,
 )
+from app.analysis.entry_point_detector import detect_entry_points
 from app.analysis.file_ranker import rank_files
 from app.analysis.dependency_comparator import compare_dependencies
 from app.analysis.requirements_parser import parse_requirements
@@ -97,6 +98,9 @@ def analyze_repository(request: RepositoryRequest):
     structural_ranking = rank_structurally_important_files(
         dependency_summary
 )
+    entry_points = detect_entry_points(
+        repository_contents
+)
     external_dependencies = find_external_dependencies(
     repository_contents
 )
@@ -136,4 +140,5 @@ def analyze_repository(request: RepositoryRequest):
         for file in ranked_files
     ],
     "structural_ranking": structural_ranking,
+    "entry_points": entry_points,
 }
