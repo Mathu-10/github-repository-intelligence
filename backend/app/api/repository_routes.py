@@ -1,3 +1,4 @@
+from app.analysis import dependency_summary
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, HttpUrl
 from app.analysis.file_filter import filter_repository_tree
@@ -7,6 +8,9 @@ from app.repository.github_client import (
 )
 from app.analysis.external_dependency_analyzer import (
     find_external_dependencies,
+)
+from app.analysis.structural_ranker import (
+    rank_structurally_important_files,
 )
 from app.analysis.file_ranker import rank_files
 from app.analysis.dependency_comparator import compare_dependencies
@@ -90,6 +94,9 @@ def analyze_repository(request: RepositoryRequest):
     repository_contents,
     dependency_graph,
 )
+    structural_ranking = rank_structurally_important_files(
+        dependency_summary
+)
     external_dependencies = find_external_dependencies(
     repository_contents
 )
@@ -128,4 +135,5 @@ def analyze_repository(request: RepositoryRequest):
         file["path"]
         for file in ranked_files
     ],
+    "structural_ranking": structural_ranking,
 }
