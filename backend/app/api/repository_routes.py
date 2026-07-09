@@ -5,6 +5,7 @@ from app.repository.github_client import (
     get_repository_metadata,
     get_repository_tree,
 )
+from app.repository.content_fetcher import fetch_repository_contents
 router = APIRouter()
 class RepositoryRequest(BaseModel):
     repo_url: HttpUrl
@@ -56,6 +57,11 @@ def analyze_repository(request: RepositoryRequest):
         )
 
     filtered_files = filter_repository_tree(tree)
+    repository_contents = fetch_repository_contents(
+        owner,
+        repo,
+        filtered_files,
+    )
 
     return {
     "status": "valid",
@@ -70,4 +76,6 @@ def analyze_repository(request: RepositoryRequest):
     "total_tree_items": len(tree),
     "analyzable_file_count": len(filtered_files),
     "files": filtered_files,
+    "fetched_file_count": len(repository_contents),
+    "repository_contents": repository_contents,
 }
