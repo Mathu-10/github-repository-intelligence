@@ -8,6 +8,8 @@ from app.repository.github_client import (
 from app.analysis.external_dependency_analyzer import (
     find_external_dependencies,
 )
+from app.analysis.dependency_comparator import compare_dependencies
+from app.analysis.requirements_parser import parse_requirements
 from app.analysis.dependency_summary import build_dependency_summary
 from app.repository.content_fetcher import fetch_repository_contents
 from app.analysis.file_classifier import classify_file
@@ -87,7 +89,17 @@ def analyze_repository(request: RepositoryRequest):
     external_dependencies = find_external_dependencies(
     repository_contents
 )
-    
+    declared_dependencies = []
+
+    for file in repository_contents:
+        if file["path"].lower().endswith("requirements.txt"):
+            declared_dependencies.extend(
+                parse_requirements(file["content"])
+            )
+    dependency_comparison = compare_dependencies(
+    external_dependencies,
+    declared_dependencies,
+)
     return {
     "status": "valid",
     "owner": owner,
@@ -106,4 +118,6 @@ def analyze_repository(request: RepositoryRequest):
     "dependency_graph": dependency_graph,
     "dependency_summary": dependency_summary,
     "external_dependencies": external_dependencies,
+    "declared_dependencies": declared_dependencies,
+    "dependency_comparison": dependency_comparison,
 }
