@@ -5,6 +5,7 @@ from app.repository.github_client import (
     get_repository_metadata,
     get_repository_tree,
 )
+from app.analysis.dependency_summary import build_dependency_summary
 from app.repository.content_fetcher import fetch_repository_contents
 from app.analysis.file_classifier import classify_file
 from app.analysis.python_parser import parse_python_file
@@ -76,6 +77,10 @@ def analyze_repository(request: RepositoryRequest):
     dependency_graph = build_python_dependency_graph(
     repository_contents
 )
+    dependency_summary = build_dependency_summary(
+    repository_contents,
+    dependency_graph,
+)
     
     return {
     "status": "valid",
@@ -93,4 +98,5 @@ def analyze_repository(request: RepositoryRequest):
     "fetched_file_count": len(repository_contents),
     "repository_contents": repository_contents,
     "dependency_graph": dependency_graph,
+    "dependency_summary": dependency_summary,
 }
