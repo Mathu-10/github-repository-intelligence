@@ -7,6 +7,8 @@ from app.repository.github_client import (
 )
 from app.repository.content_fetcher import fetch_repository_contents
 from app.analysis.file_classifier import classify_file
+from app.analysis.python_parser import parse_python_file
+
 router = APIRouter()
 class RepositoryRequest(BaseModel):
     repo_url: HttpUrl
@@ -65,6 +67,12 @@ def analyze_repository(request: RepositoryRequest):
     )
     for file in repository_contents:
         file["category"] = classify_file(file["path"])
+
+        if (
+            file["category"] == "source_code"
+            and file["path"].lower().endswith(".py")
+        ):
+            file["analysis"] = parse_python_file(file["content"])
     return {
     "status": "valid",
     "owner": owner,

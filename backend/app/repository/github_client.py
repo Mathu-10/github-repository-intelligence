@@ -1,6 +1,24 @@
+from fastapi import responses
+from fastapi import responses
+from fastapi import responses
 import base64
-import requests
+import os
 
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+
+GITHUB_API_BASE_URL = "https://api.github.com"
+
+HEADERS = {
+    "Accept": "application/vnd.github+json",
+}
+
+if GITHUB_TOKEN:
+    HEADERS["Authorization"] = f"Bearer {GITHUB_TOKEN}"
 GITHUB_API_BASE_URL = "https://api.github.com"
 
 
@@ -8,7 +26,12 @@ def get_repository_metadata(owner: str, repo: str):
     url = f"{GITHUB_API_BASE_URL}/repos/{owner}/{repo}"
 
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(
+            url,
+            headers=HEADERS,
+            timeout=10,
+        )
+        
     except requests.RequestException:
         return None, "Could not connect to GitHub"
 
@@ -27,7 +50,11 @@ def get_repository_tree(owner: str, repo: str, branch: str):
     )
 
     try:
-        response = requests.get(url, timeout=15)
+        response = requests.get(
+            url,
+            headers=HEADERS,
+            timeout=15,
+        )
     except requests.RequestException:
         return None, "Could not fetch repository structure"
 
