@@ -6,6 +6,10 @@ from app.repository.github_client import (
     get_repository_metadata,
     get_repository_tree,
 )
+from app.model.training_example_builder import (
+    build_target_output,
+    build_training_example,
+)
 from app.analysis.external_dependency_analyzer import (
     find_external_dependencies,
 )
@@ -151,6 +155,17 @@ def analyze_repository(request: RepositoryRequest):
 )
 
     model_output_template = build_model_output_template()
+    target_output = build_target_output(
+    repository_summary,
+    entry_points,
+    structural_ranking,
+    dependency_comparison,
+)
+
+    training_example = build_training_example(
+        model_input,
+        target_output,
+)
     return {
     "status": "valid",
     "owner": owner,
@@ -181,4 +196,6 @@ def analyze_repository(request: RepositoryRequest):
     "repository_summary": repository_summary,
     "model_input": model_input,
     "model_output_template": model_output_template,
+    "target_output": target_output,
+    "training_example": training_example,
 }
