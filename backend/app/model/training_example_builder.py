@@ -150,7 +150,10 @@ def build_target_output(
             "for detected runtime functionality."
         )
 
-    if execution_flow:
+    if entry_points and any(
+    relationship.get("starts_from_entry_point")
+        for relationship in execution_flow
+    ):
         strengths.append(
             "Has a detectable internal dependency path beginning "
             "from an identified application entry point."
