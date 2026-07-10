@@ -167,6 +167,7 @@ def analyze_repository(request: RepositoryRequest):
     entry_points,
     structural_ranking,
     dependency_comparison,
+    dependency_graph,
 )
 
     training_example = build_training_example(
