@@ -10,6 +10,9 @@ from app.model.training_example_builder import (
     build_target_output,
     build_training_example,
 )
+from app.model.dataset_writer import (
+    save_training_example,
+)
 from app.analysis.external_dependency_analyzer import (
     find_external_dependencies,
 )
@@ -38,6 +41,7 @@ from app.analysis.dependency_analyzer import build_python_dependency_graph
 router = APIRouter()
 class RepositoryRequest(BaseModel):
     repo_url: HttpUrl
+    save_training_record: bool = False
 
 
 @router.post("/analyze")
@@ -166,36 +170,42 @@ def analyze_repository(request: RepositoryRequest):
         model_input,
         target_output,
 )
+    dataset_save_result = None
+    save_error = None
+
+    if request.save_training_record:
+        dataset_save_result, save_error = (
+            save_training_example(
+                training_example
+            )
+        )
+
+    if save_error:
+        raise HTTPException(
+            status_code=500,
+            detail=save_error,
+        )
     return {
     "status": "valid",
-    "owner": owner,
-    "repository": repo,
-    "description": metadata.get("description"),
-    "default_branch": metadata.get("default_branch"),
-    "language": metadata.get("language"),
-    "size_kb": metadata.get("size"),
-    "stars": metadata.get("stargazers_count"),
-    "forks": metadata.get("forks_count"),
-    "total_tree_items": len(tree),
-    "analyzable_file_count": len(filtered_files),
-    "files": filtered_files,
-    "fetched_file_count": len(repository_contents),
-    "repository_contents": repository_contents,
-    "dependency_graph": dependency_graph,
-    "dependency_summary": dependency_summary,
-    "external_dependencies": external_dependencies,
-    "declared_dependencies": declared_dependencies,
-    "dependency_comparison": dependency_comparison,
-    "ranked_file_paths": [
-        file["path"]
-        for file in ranked_files
-    ],
-    "structural_ranking": structural_ranking,
-    "entry_points": entry_points,
-    "architecture": architecture,
+    "repository": metadata.get("name"),
+
+    # Temporarily hidden from Swagger response
+    # "files": filtered_files,
+    # "ranked_file_paths": ranked_file_paths,
+    # "repository_contents": repository_contents,
+    # "dependency_graph": dependency_graph,
+    # "dependency_summary": dependency_summary,
+    # "external_dependencies": external_dependencies,
+    # "declared_dependencies": declared_dependencies,
+    # "dependency_comparison": dependency_comparison,
+    # "structural_ranking": structural_ranking,
+    # "entry_points": entry_points,
+    # "architecture": architecture,
+    # "model_input": model_input,
+    # "model_output_template": model_output_template,
+    # "training_example": training_example,
+
     "repository_summary": repository_summary,
-    "model_input": model_input,
-    "model_output_template": model_output_template,
     "target_output": target_output,
-    "training_example": training_example,
+    "dataset_save_result": dataset_save_result,
 }
