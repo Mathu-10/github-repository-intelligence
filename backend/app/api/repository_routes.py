@@ -6,6 +6,9 @@ from app.repository.github_client import (
     get_repository_metadata,
     get_repository_tree,
 )
+from app.model.training_quality import (
+    evaluate_training_example,
+)
 from app.model.training_example_builder import (
     build_target_output,
     build_training_example,
@@ -170,6 +173,9 @@ def analyze_repository(request: RepositoryRequest):
         model_input,
         target_output,
 )
+    training_quality = evaluate_training_example(
+    training_example
+)
     dataset_save_result = None
     save_error = None
 
@@ -208,4 +214,5 @@ def analyze_repository(request: RepositoryRequest):
     "repository_summary": repository_summary,
     "target_output": target_output,
     "dataset_save_result": dataset_save_result,
+    "training_quality": training_quality,
 }
