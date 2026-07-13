@@ -50,12 +50,21 @@ def build_repository_summary(
                 analysis.get("classes", [])
             )
 
+    has_positive_score = any(file["structural_score"] > 0 for file in structural_ranking)
+    
+    filtered_structural_ranking = structural_ranking
+    if has_positive_score:
+        filtered_structural_ranking = [
+            file for file in structural_ranking
+            if file["structural_score"] > 0
+        ]
+        
     important_files = [
         {
             "path": file["path"],
             "structural_score": file["structural_score"],
         }
-        for file in structural_ranking[:5]
+        for file in filtered_structural_ranking[:5]
     ]
 
     direct_dependencies = [

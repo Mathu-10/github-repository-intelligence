@@ -131,16 +131,16 @@ def evaluate_training_example(
         })
 
     # 6. Structured target lists: 10 points
-    list_fields = [
-        output.get("execution_flow"),
-        output.get("important_files"),
-        output.get("strengths"),
-        output.get("potential_improvements"),
+    list_field_names = [
+        "execution_flow",
+        "important_files",
+        "strengths",
+        "potential_improvements",
     ]
 
     if all(
-        isinstance(value, list) and len(value) > 0
-        for value in list_fields
+        isinstance(output.get(field_name), list)
+        for field_name in list_field_names
     ):
         score += 10
         checks.append({

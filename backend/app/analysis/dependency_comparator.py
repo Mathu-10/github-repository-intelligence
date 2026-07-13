@@ -1,6 +1,19 @@
 IMPORT_TO_PACKAGE_MAP = {
     "dotenv": "python-dotenv",
+    "jwt": "PyJWT",
+    "dateutil": "python-dateutil",
+    "multipart": "python-multipart",
+    "yaml": "pyyaml",
 }
+
+
+def normalize_package_name(
+    name: str,
+) -> str:
+    return name.lower().replace(
+        "_",
+        "-",
+    )
 
 
 def compare_dependencies(
@@ -8,10 +21,17 @@ def compare_dependencies(
     declared_dependencies: list[dict],
 ) -> dict:
 
-    declared_names = {
-        dependency["normalized_name"]
-        for dependency in declared_dependencies
-    }
+    declared_by_name = {}
+
+    for dependency in declared_dependencies:
+        normalized_name = dependency[
+            "normalized_name"
+        ]
+
+        declared_by_name.setdefault(
+            normalized_name,
+            [],
+        ).append(dependency)
 
     directly_used = []
     imported_but_undeclared = []
@@ -24,9 +44,15 @@ def compare_dependencies(
             import_name,
         )
 
-        normalized_package = package_name.lower().replace(
-            "_",
-            "-",
+        normalized_package = (
+            normalize_package_name(
+                package_name
+            )
+        )
+
+        declarations = declared_by_name.get(
+            normalized_package,
+            [],
         )
 
         result = {
@@ -34,12 +60,21 @@ def compare_dependencies(
             "package_name": normalized_package,
             "used_by": dependency["used_by"],
             "usage_count": dependency["usage_count"],
+            "declared_groups": sorted({
+                declaration.get(
+                    "group",
+                    "runtime",
+                )
+                for declaration in declarations
+            }),
         }
 
-        if normalized_package in declared_names:
+        if declarations:
             directly_used.append(result)
         else:
-            imported_but_undeclared.append(result)
+            imported_but_undeclared.append(
+                result
+            )
 
     directly_used_packages = {
         dependency["package_name"]
@@ -55,7 +90,9 @@ def compare_dependencies(
 
     return {
         "directly_used": directly_used,
-        "imported_but_undeclared": imported_but_undeclared,
+        "imported_but_undeclared": (
+            imported_but_undeclared
+        ),
         "declared_not_directly_imported": (
             declared_not_directly_imported
         ),

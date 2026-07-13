@@ -1,4 +1,5 @@
 import json
+from app.analysis.file_classifier import classify_file
 
 
 TRAINING_FORMAT_VERSION = "1.0"
@@ -43,6 +44,25 @@ def build_execution_flow(
         for entry_point in entry_points
     }
 
+    # Determine reachable nodes from entry points via BFS
+    reachable_nodes = set()
+    if entry_point_paths:
+        reachable_nodes.update(entry_point_paths)
+        queue = list(entry_point_paths)
+
+        adj = {}
+        for edge in dependency_graph:
+            src = edge["source"]
+            tgt = edge["target"]
+            adj.setdefault(src, []).append(tgt)
+
+        while queue:
+            curr = queue.pop(0)
+            for neighbor in adj.get(curr, []):
+                if neighbor not in reachable_nodes:
+                    reachable_nodes.add(neighbor)
+                    queue.append(neighbor)
+
     dependency_paths = []
     seen_relationships = set()
 
@@ -64,11 +84,48 @@ def build_execution_flow(
             "target": target,
             "relationship": "imports",
             "starts_from_entry_point": (
-                source in entry_point_paths
+                source in reachable_nodes
             ),
         })
 
     return dependency_paths
+
+
+def determine_dependency_scope(declared_groups: list[str], used_by: list[str]) -> str:
+    # 1. Determine scope from actual file usage first (evidence-based)
+    used_categories = {classify_file(path) for path in used_by}
+
+    if "source_code" in used_categories:
+        return "runtime/source"
+
+    if "test" in used_categories:
+        return "test"
+
+    if "documentation" in used_categories:
+        return "documentation"
+
+    if "example" in used_categories:
+        return "example"
+
+    # 2. Fallback to declared groups if no usage information is available
+    for group in declared_groups:
+        group_lower = group.lower()
+        clean_group = (
+            group_lower.split(":", 1)[1]
+            if ":" in group_lower
+            else group_lower
+        )
+
+        if clean_group == "runtime":
+            return "runtime/source"
+        elif any(t in clean_group for t in ["test", "testing", "tests", "pytest"]):
+            return "test"
+        elif any(d in clean_group for d in ["doc", "docs", "documentation"]):
+            return "documentation"
+        elif any(dv in clean_group for dv in ["dev", "development", "tool", "tooling", "lint", "linter", "format", "formatter", "build", "ci"]):
+            return "configuration/other"
+
+    return "runtime/source"
 
 
 def build_target_output(
@@ -117,13 +174,29 @@ def build_target_output(
         dependency_graph,
     )
 
-    directly_used = [
-        dependency["package_name"]
-        for dependency in dependency_comparison.get(
-            "directly_used",
-            [],
-        )
-    ]
+    # Categorize directly used dependencies
+    runtime_deps = []
+    test_deps = []
+    docs_deps = []
+    example_deps = []
+    config_deps = []
+
+    for dep in dependency_comparison.get("directly_used", []):
+        name = dep["package_name"]
+        groups = dep.get("declared_groups", [])
+        used_by = dep.get("used_by", [])
+        scope = determine_dependency_scope(groups, used_by)
+
+        if scope == "runtime/source":
+            runtime_deps.append(name)
+        elif scope == "test":
+            test_deps.append(name)
+        elif scope == "documentation":
+            docs_deps.append(name)
+        elif scope == "example":
+            example_deps.append(name)
+        elif scope == "configuration/other":
+            config_deps.append(name)
 
     undeclared = [
         dependency["package_name"]
@@ -144,14 +217,14 @@ def build_target_output(
             "major repository responsibilities."
         )
 
-    if directly_used:
+    if runtime_deps:
         strengths.append(
             "Uses explicitly declared external packages "
             "for detected runtime functionality."
         )
 
     if entry_points and any(
-    relationship.get("starts_from_entry_point")
+        relationship.get("starts_from_entry_point")
         for relationship in execution_flow
     ):
         strengths.append(
@@ -174,6 +247,40 @@ def build_target_output(
             "Add automated tests that validate repository "
             "analysis across different project structures."
         )
+
+    explanation_parts = []
+    if runtime_deps:
+        explanation_parts.append(
+            "Directly used runtime/source external packages are "
+            + ", ".join(runtime_deps)
+        )
+    if docs_deps:
+        explanation_parts.append(
+            "Directly used documentation external packages are "
+            + ", ".join(docs_deps)
+        )
+    if test_deps:
+        explanation_parts.append(
+            "Directly used test external packages are "
+            + ", ".join(test_deps)
+        )
+    if example_deps:
+        explanation_parts.append(
+            "Directly used example external packages are "
+            + ", ".join(example_deps)
+        )
+    if config_deps:
+        explanation_parts.append(
+            "Directly used configuration/other external packages are "
+            + ", ".join(config_deps)
+        )
+
+    if not explanation_parts:
+        dependency_explanation = (
+            "Directly used external packages are none detected."
+        )
+    else:
+        dependency_explanation = ". ".join(explanation_parts) + "."
 
     return {
         "overview": (
@@ -205,15 +312,7 @@ def build_target_output(
         ),
         "execution_flow": execution_flow,
         "important_files": important_files,
-        "dependency_explanation": (
-            "Directly used external packages are "
-            + (
-                ", ".join(directly_used)
-                if directly_used
-                else "none detected"
-            )
-            + "."
-        ),
+        "dependency_explanation": dependency_explanation,
         "strengths": strengths,
         "potential_improvements": potential_improvements,
     }

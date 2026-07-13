@@ -17,25 +17,74 @@ def parse_python_file(content: str) -> dict:
     functions = []
     classes = []
 
+    typing_aliases = {"typing"}
+    tc_aliases = {"TYPE_CHECKING"}
+
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                imports.append(alias.name)
+                if alias.name == "typing":
+                    typing_aliases.add(alias.asname or "typing")
+        elif isinstance(node, ast.ImportFrom):
+            if node.module == "typing":
+                for alias in node.names:
+                    if alias.name == "TYPE_CHECKING":
+                        tc_aliases.add(alias.asname or "TYPE_CHECKING")
 
+    def is_type_checking_condition(test):
+        if isinstance(test, ast.Name):
+            return test.id in tc_aliases
+        if isinstance(test, ast.Attribute):
+            if test.attr == "TYPE_CHECKING":
+                if isinstance(test.value, ast.Name) and test.value.id in typing_aliases:
+                    return True
+        return False
+
+    def extract_imports(node):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                imports.append(alias.name)
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
-
+            relative_prefix = "." * node.level
+            full_module = f"{relative_prefix}{module}"
             for alias in node.names:
-                imports.append(
-                    f"{module}.{alias.name}" if module else alias.name
-                )
+                if full_module:
+                    imports.append(f"{full_module}.{alias.name}")
+                else:
+                    imports.append(f"{relative_prefix}{alias.name}")
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            return
+        elif isinstance(node, ast.If):
+            if is_type_checking_condition(node.test):
+                if hasattr(node, "orelse") and isinstance(node.orelse, list):
+                    for child in node.orelse:
+                        extract_imports(child)
+            else:
+                for child in ast.iter_child_nodes(node):
+                    extract_imports(child)
+        else:
+            for child in ast.iter_child_nodes(node):
+                extract_imports(child)
 
-        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+    extract_imports(tree)
+
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(
+            node,
+            (
+                ast.FunctionDef,
+                ast.AsyncFunctionDef,
+            ),
+        ):
             functions.append({
                 "name": node.name,
                 "line_start": node.lineno,
                 "line_end": node.end_lineno,
-                "is_async": isinstance(node, ast.AsyncFunctionDef),
+                "is_async": isinstance(
+                    node,
+                    ast.AsyncFunctionDef,
+                ),
                 "arguments": [
                     argument.arg
                     for argument in node.args.args
@@ -48,7 +97,10 @@ def parse_python_file(content: str) -> dict:
             for class_node in node.body:
                 if isinstance(
                     class_node,
-                    (ast.FunctionDef, ast.AsyncFunctionDef),
+                    (
+                        ast.FunctionDef,
+                        ast.AsyncFunctionDef,
+                    ),
                 ):
                     methods.append({
                         "name": class_node.name,

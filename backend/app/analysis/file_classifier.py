@@ -32,6 +32,8 @@ CONFIG_FILES = {
     "tsconfig.json",
     "vite.config.js",
     "vite.config.ts",
+    "setup.py",
+    "setup.cfg",
 }
 
 
@@ -54,15 +56,33 @@ SOURCE_EXTENSIONS = {
 }
 
 
+EXAMPLE_DIRECTORIES = {
+    "example",
+    "examples",
+    "demo",
+    "demos",
+    "sample",
+    "samples",
+}
+
+
 def classify_file(path: str) -> str:
     file_path = PurePosixPath(path)
+
+    # Skip files inside hidden directories (e.g. .spin/, .github/)
+    if any(part.startswith(".") for part in file_path.parts[:-1]):
+        return "other"
+
     file_name = file_path.name
     file_name_lower = file_name.lower()
-    path_parts_lower = {part.lower() for part in file_path.parts}
+
+    path_parts_lower = {
+        part.lower()
+        for part in file_path.parts
+    }
 
     if (
-        "test" in path_parts_lower
-        or "tests" in path_parts_lower
+        path_parts_lower & {"test", "tests", "t", "testing", "fixture", "fixtures"}
         or file_name_lower.startswith("test_")
         or file_name_lower.endswith("_test.py")
         or file_name_lower.endswith(".test.js")
@@ -70,16 +90,50 @@ def classify_file(path: str) -> str:
     ):
         return "test"
 
-    if file_name in DEPENDENCY_FILES:
+    if (
+        path_parts_lower
+        & EXAMPLE_DIRECTORIES
+        or path_parts_lower & {"bench", "benchmark", "benchmarks"}
+        or file_name_lower.startswith("bench")
+        or file_name_lower.startswith("benchmark")
+    ):
+        return "example"
+
+    if any(
+        part in {"docs", "doc", "documentation", "docs_src", "examples", "example", "tutorials", "tutorial", "website", "web", "playground", "playgrounds"}
+        or part.startswith("docs_")
+        or part.startswith("docs-")
+        for part in path_parts_lower
+    ):
+        return "documentation"
+
+    is_dependency = (
+        file_name in DEPENDENCY_FILES
+        or (file_path.parent.name.lower() == "requirements" and file_path.suffix.lower() == ".txt")
+    )
+    if is_dependency:
         return "dependency"
 
     if file_name_lower in DOCUMENTATION_FILES:
         return "documentation"
 
-    if file_name_lower in {name.lower() for name in CONFIG_FILES}:
+    if (
+        file_name_lower in CONFIG_FILES
+        or "config" in file_name_lower
+        or file_name_lower in {"gruntfile.js", "gulpfile.js"}
+    ):
         return "configuration"
 
-    if file_path.suffix.lower() in SOURCE_EXTENSIONS:
+    if any(
+        part in {"release", "releases", "tool", "tools", "tooling", "task", "tasks", "scripts", "script"}
+        for part in path_parts_lower
+    ):
+        return "other"
+
+    if (
+        file_path.suffix.lower()
+        in SOURCE_EXTENSIONS
+    ):
         return "source_code"
 
     return "other"
